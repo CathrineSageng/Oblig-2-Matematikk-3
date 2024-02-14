@@ -136,6 +136,7 @@
     <ClCompile Include="dependencies\include\glm\detail\glm.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ShaderClass.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="dependencies\include\glad\glad.h" />
@@ -425,8 +426,11 @@
     <ClInclude Include="dependencies\include\glm\vector_relational.hpp" />
     <ClInclude Include="dependencies\include\KHR\khrplatform.h" />
     <ClInclude Include="dependencies\include\stb\stb_image.h" />
+    <ClInclude Include="ShaderClass.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="default.frag" />
+    <None Include="default.vert" />
     <None Include="dependencies\include\glm\detail\func_common.inl" />
     <None Include="dependencies\include\glm\detail\func_common_simd.inl" />
     <None Include="dependencies\include\glm\detail\func_exponential.inl" />
