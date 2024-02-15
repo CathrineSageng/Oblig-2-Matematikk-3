@@ -7,14 +7,15 @@
 #include<vector>
 #include <fstream>
 
-using namespace std; 
 
 #include"ShaderClass.h"
+
+using namespace std;
 
 GLFWwindow* window;
 
 const GLuint WIDTH = 1000, HEIGHT = 1000;
-const GLfloat cameraSpeed = 0.001f;
+const GLfloat cameraSpeed = 0.01f;
 
 
 // Camera settings
@@ -32,36 +33,37 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 
-void processInput(GLFWwindow* window);
-
 void savePointsToFile(const std::vector<glm::vec2>& points, const std::string& filename) {
     std::ofstream file(filename);
     if (file.is_open()) {
-        for (const auto& point : points) {
-            file << point.x << " " << point.y << std::endl;
+        for (const auto& point : points) 
+        {
+            file << point.x << " " << point.y << endl;
         }
         file.close();
-        std::cout << "Points saved to " << filename << std::endl;
+        cout << "Points saved to " << filename << endl;
     }
-    else {
-        std::cerr << "Unable to open file: " << filename << std::endl;
+    else 
+    {
+        cout << "Unable to open file: " << filename <<endl;
     }
 }
 
-void saveParabolaToFile(const std::vector<glm::vec2>& parabola, const std::string& filename) {
+void saveCoordinatesToFile(const std::vector<glm::vec2>& points, const std::string& filename) {
     std::ofstream file(filename);
     if (file.is_open()) {
-        for (const auto& point : parabola) {
-            file << point.x << " " << point.y << std::endl;
+        for (const auto& point : points) 
+        {
+            file << "x: " << point.x << " ,y:" << point.y << endl;
         }
         file.close();
-        std::cout << "Parabola points saved to " << filename << std::endl;
+        cout << "Points saved to " << filename << endl;
     }
-    else {
-        std::cerr << "Unable to open file: " << filename << std::endl;
+    else 
+    {
+        cout << "Unable to open file: " << filename << endl;
     }
 }
-
 
 
 // Matrisene A^TA og A^TY, regnet ut på forhånd med en matrisekalkulator 
@@ -69,9 +71,6 @@ void saveParabolaToFile(const std::vector<glm::vec2>& parabola, const std::strin
 //https://matrix.reshish.com/multCalculation.php
 vector<float> AtA = { 7667, 1169, 191, 1169, 191, 35, 191, 35, 8 };
 vector<float> AtY = { 870, 157, 31 };
-
-
-
 
 glm::vec3 inversMatriseRegning(const vector<float>& A, const vector<float>& b);
 
@@ -108,8 +107,8 @@ int main() {
     glm::mat4 projection = glm::perspective(glm::radians(45.0f), (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
 
     // Game loop
-    while (!glfwWindowShouldClose(window)) {
-        processInput(window);
+    while (!glfwWindowShouldClose(window)) 
+    {
         glfwPollEvents();
 
         GLfloat deltaTime = glfwGetTime();
@@ -193,16 +192,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
-//Closes the window when esc kay is pressed. 
-void processInput(GLFWwindow* window)
-{
-    //Closes the window with the esc key
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    {
-        glfwSetWindowShouldClose(window, true);
-    }
-}
-
 // Løsning av ligningen Ax = b
 glm::vec3 inversMatriseRegning(const vector<float>& A, const vector<float>& b) 
 {
@@ -238,6 +227,9 @@ void lageParabel(GLuint& VAO, GLuint& VBO) {
         points.push_back(glm::vec2(x, y));
 
     }
+
+    // Lagre punktene i en tekstfil
+    saveCoordinatesToFile(points, "coordinates.txt");
 
     // Generer VAO og VBO
     glGenVertexArrays(1, &VAO);
