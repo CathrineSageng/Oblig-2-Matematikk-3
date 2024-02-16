@@ -10,6 +10,8 @@
 
 using namespace std;
 
+GLFWwindow* window;
+
 const GLuint WIDTH = 1000, HEIGHT = 1000;
 const GLfloat cameraSpeed = 0.001f;
 glm::vec3 cubePosition = glm::vec3(0.0f, 0.5f, 0.0f); // Initial position of the cube
@@ -25,6 +27,96 @@ GLfloat lastX = WIDTH / 2.0f;
 GLfloat lastY = HEIGHT / 2.0f;
 bool firstMouse = true;
 bool keys[1024];
+
+//vector<float> A_matrise = { 1, 1, 1, 1, 8, 4, 2, 1, 216, 36, 6, 1, 512, 64, 8, 1 };
+//vector<float> A_vektor = { 1, 8, 3, 1 };
+
+vector<glm::vec2> controlPoints = { glm::vec2(1, 1), glm::vec2(2, 8), glm::vec2(6, 3), glm::vec2(8, 1) };
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
+//void savePointsToFile(const std::vector<glm::vec2>& points, const std::string& filename);
+//glm::vec4 inversMatriseRegningVec4(const vector<float>& A, const vector<float>& b);
+//void lageParabel(GLuint& VAO, GLuint& VBO);
+//void tegnePunktene();
+//void tegneParabel();
+//void rendreScenen();
+void savePointsToFile(const std::vector<glm::vec2>& points, const std::string& filename);
+void lageParabel(GLuint& VAO, GLuint& VBO);
+void tegnePunktene();
+void tegneParabel();
+void rendreScenen();
+
+
+int main() {
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+
+    window = glfwCreateWindow(WIDTH, HEIGHT, "OpenGL Cube with Camera", nullptr, nullptr);
+    glfwMakeContextCurrent(window);
+
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetKeyCallback(window, key_callback);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cout << "Failed to initialize GLAD" << std::endl;
+        return -1;
+    }
+
+    glViewport(0, 0, WIDTH, HEIGHT);
+
+    //Generates Shader object using shaders defualt.vert and default.frag
+    Shader shaderProgram("default.vert", "default.frag");
+
+    // Enable depth testing
+    glEnable(GL_DEPTH_TEST);
+
+    // Projection matrix
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
+
+    // Game loop
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+
+        GLfloat deltaTime = glfwGetTime();
+        glfwSetTime(0.0f);
+
+        // Handle keyboard input for camera movement
+        if (keys[GLFW_KEY_W])
+            cameraPos += cameraSpeed * cameraFront;
+        if (keys[GLFW_KEY_S])
+            cameraPos -= cameraSpeed * cameraFront;
+        if (keys[GLFW_KEY_A])
+            cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+        if (keys[GLFW_KEY_D])
+            cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+
+        // Use shader program
+        shaderProgram.Activate();
+
+        // View matrix
+        glm::mat4 view;
+        view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+
+        // Pass transformation matrices to shader
+        GLint modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
+        GLint viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
+        GLint projLoc = glGetUniformLocation(shaderProgram.ID, "projection");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        rendreScenen();
+        glfwPollEvents();
+    }
+    
+    glfwTerminate();
+
+    return 0;
+}
 
 // Mouse movement callback function
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
@@ -70,259 +162,289 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
-// Function to calculate the inverse of a 4x4 matrix
-glm::mat4 inverseMatrix(const glm::mat4& mat) {
-    return glm::inverse(mat);
-}
 
-// Function to perform matrix multiplication
-glm::vec4 multiplyMatrixVector(const glm::mat4& mat, const glm::vec4& vec) {
-    return mat * vec;
-}
+//glm::vec4 inversMatriseRegningVec4(const vector<float>& A, const vector<float>& b)
+//{
+//    //AtA matrisen er en 4*4 matrise som tar inn verdiene til vektoren AtA. 
+//    //Verdiene i denne matrisen er regnet ut med en matrisekalkulator
+//    glm::mat4 AtA_matrix(A[0], A[1], A[2], A[3],
+//        A[4], A[5], A[6], A[7],
+//        A[8], A[9], A[10], A[11],
+//        A[12], A[13], A[14], A[15]);
+//
+//    //Oppretter en AtY vektor som er regnet ut med matrisekalkulator
+//    //Det er At verdiene ganget med y-verdi koordinatene.
+//    glm::vec4 AtY_vektor(b[0], b[1], b[2], b[3]);
+//
+//    //Regner ut den inverse verdien til matrisen AtA og ganger resultatet med vektoren AtY 
+//    glm::vec4 x = glm::inverse(AtA_matrix) * AtY_vektor;
+//
+//    //Returnerer løsningen til x
+//    return x;
+//}
+//
+//void lageParabel(GLuint& VAO, GLuint& VBO) {
+//    // Løsning av minste kvadraters metode
+//    glm::vec4 koeffisienter = inversMatriseRegningVec4(A_matrise, A_vektor);
+//
+//    // Parabelpunkter
+//    const int punkter = 100;
+//    vector<glm::vec2> points;
+//    for (int i = 0; i < punkter; ++i)
+//    {
+//        float t = (i / (float)(punkter - 1)) * 20.0f - 10.0f;
+//        float x = t;
+//        float y = koeffisienter.x * x * x * x + koeffisienter.y * x * x + koeffisienter.z * x + koeffisienter.w;
+//        points.push_back(glm::vec2(x, y));
+//
+//    }
+//
+//    // Generer VAO og VBO
+//    glGenVertexArrays(1, &VAO);
+//    glGenBuffers(1, &VBO);
+//
+//    // Binder VAO
+//    glBindVertexArray(VAO);
+//
+//    // Binder VBO
+//    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+//    glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(glm::vec2), &points[0], GL_STATIC_DRAW);
+//
+//    // Setter attributtene
+//    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+//    glEnableVertexAttribArray(0);
+//
+//    // Unbinder VBO og VAO
+//    glBindBuffer(GL_ARRAY_BUFFER, 0);
+//    glBindVertexArray(0);
+//}
+//
+//void tegnePunktene() {
+//    // Punkter
+//    vector<glm::vec2> points =
+//    {
+//        glm::vec2(1, 1), glm::vec2(2, 8), glm::vec2(6, 3), glm::vec2(8, 1)
+//    };
+//
+//    // Lagre punktene i en tekstfil
+//    savePointsToFile(points, "points.txt");
+//
+//     // Farger for punktene (gul)
+//    vector<glm::vec3> farger(points.size(), glm::vec3(1.0f, 1.0f, 0.0f));
+//
+//    // Generer VAO og VBO
+//    GLuint VAO, VBO, CBO;
+//    glGenVertexArrays(1, &VAO);
+//    glGenBuffers(1, &VBO);
+//    glGenBuffers(1, &CBO);
+//
+//    // Binder VAO
+//    glBindVertexArray(VAO);
+//
+//    // Binder VBO
+//    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+//    glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(glm::vec2), &points[0], GL_STATIC_DRAW);
+//
+//    // Setter attributtene
+//    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+//    glEnableVertexAttribArray(0);
+//
+//    // Binder CBO for farger
+//    glBindBuffer(GL_ARRAY_BUFFER, CBO);
+//    glBufferData(GL_ARRAY_BUFFER, farger.size() * sizeof(glm::vec3), &farger[0], GL_STATIC_DRAW);
+//    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+//    glEnableVertexAttribArray(1);
+//
+//    // Tegner punktene
+//    glPointSize(8.0f);
+//    glDrawArrays(GL_POINTS, 0, points.size());
+//
+//    // Unbinder VBO og VAO
+//    glBindBuffer(GL_ARRAY_BUFFER, 0);
+//    glBindVertexArray(0);
+//
+//    glDeleteBuffers(1, &VBO);
+//    glDeleteBuffers(1, &CBO);
+//    glDeleteVertexArrays(1, &VAO);
+//}
+//
+//void tegneParabel() {
+//    // Parabelpunkter
+//    GLuint VAO, VBO;
+//
+//    lageParabel(VAO, VBO);
+//
+//    // Binder VAO
+//    glBindVertexArray(VAO);
+//
+//    // Setter tykkelsen på linjen
+//    glLineWidth(3.0f);
+//
+//    // Tegner parabelen
+//    glDrawArrays(GL_LINE_STRIP, 0, 100);
+//
+//    // Unbinder VAO
+//    glBindVertexArray(0);
+//    glDeleteVertexArrays(1, &VAO);
+//    glDeleteBuffers(1, &VBO);
+//
+//    // Rydde opp
+//    glDeleteBuffers(1, &VBO);
+//    glDeleteVertexArrays(1, &VAO);
+//}
+//
+//void rendreScenen() {
+//
+//    glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+//    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//
+//    // Tegne punkter
+//    tegnePunktene();
+//    tegneParabel();
+//    glfwSwapBuffers(window);
+//}
+//
+//void savePointsToFile(const std::vector<glm::vec2>& points, const std::string& filename) {
+//    std::ofstream file(filename);
+//    if (file.is_open()) {
+//        for (const auto& point : points)
+//        {
+//            file << point.x << " " << point.y << endl;
+//        }
+//        file.close();
+//        cout << "Points saved to " << filename << endl;
+//    }
+//    else
+//    {
+//        cout << "Unable to open file: " << filename << endl;
+//    }
+//}
+// Generate curve points using cubic Hermite interpolation
+vector<glm::vec2> generateCurvePoints() {
+    vector<glm::vec2> curvePoints;
 
-// Function to perform interpolation and generate the polynomial coefficients
-std::vector<float> interpolatePoints(const std::vector<glm::vec2>& points) {
-    glm::mat4 A(1, 1, 1, 1,
-        8, 4, 2, 1,
-        216, 36, 6, 1,
-        512, 64, 8, 1);
+    for (size_t i = 0; i < controlPoints.size() - 1; ++i) {
+        glm::vec2 p0 = controlPoints[i];
+        glm::vec2 p1 = controlPoints[i + 1];
+        glm::vec2 m0 = i == 0 ? glm::normalize(p1 - p0) : 0.5f * (p1 - controlPoints[i - 1]);
+        glm::vec2 m1 = i == controlPoints.size() - 2 ? glm::normalize(p1 - p0) : 0.5f * (controlPoints[i + 2] - p0);
 
-    glm::vec4 b(1, 8, 3, 1);
+        for (float t = 0.0f; t <= 1.0f; t += 0.01f) {
+            float h00 = 2.0f * t * t * t - 3.0f * t * t + 1.0f;
+            float h10 = t * t * t - 2.0f * t * t + t;
+            float h01 = -2.0f * t * t * t + 3.0f * t * t;
+            float h11 = t * t * t - t * t;
 
-    glm::mat4 A_inv = inverseMatrix(A);
-    glm::vec4 x = multiplyMatrixVector(A_inv, b);
-
-    std::vector<float> coefficients;
-    coefficients.push_back(x[0]);
-    coefficients.push_back(x[1]);
-    coefficients.push_back(x[2]);
-    coefficients.push_back(x[3]);
-
-    return coefficients;
-}
-
-// Function to evaluate the polynomial at a given x value
-float evaluatePolynomial(const std::vector<float>& coefficients, float x) {
-    float result = 0.0f;
-    float x_pow = 1.0f;
-    for (int i = 0; i < coefficients.size(); ++i) {
-        result += coefficients[i] * x_pow;
-        x_pow *= x;
+            glm::vec2 point = h00 * p0 + h10 * m0 + h01 * p1 + h11 * m1;
+            curvePoints.push_back(point);
+        }
     }
-    return result;
+
+    return curvePoints;
 }
 
-// OpenGL rendering function
-void render(const std::vector<glm::vec2>& points, const std::vector<float>& coefficients)
-{
-    // Vertex data for points
-    std::vector<float> pointVertices;
-    for (const auto& point : points) {
-        pointVertices.push_back(point.x);
-        pointVertices.push_back(point.y);
-    }
+void lageParabel(GLuint& VAO, GLuint& VBO) {
+    // Generate curve points
+    vector<glm::vec2> curvePoints = generateCurvePoints();
 
-    // Vertex data for graph
-    std::vector<float> graphVertices;
-    for (float x = 1.0f; x <= 8.0f; x += 0.1f) {
-        float y = evaluatePolynomial(coefficients, x);
-        graphVertices.push_back(x);
-        graphVertices.push_back(y);
-    }
-
-    // Create and bind vertex buffer for points
-    GLuint pointVBO;
-    glGenBuffers(1, &pointVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * pointVertices.size(), pointVertices.data(), GL_STATIC_DRAW);
-
-    // Create and bind vertex buffer for graph
-    GLuint graphVBO;
-    glGenBuffers(1, &graphVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, graphVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * graphVertices.size(), graphVertices.data(), GL_STATIC_DRAW);
-
-    // Set up vertex attributes for points
-    GLuint pointVAO;
-    glGenVertexArrays(1, &pointVAO);
-    glBindVertexArray(pointVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    // Set up vertex attributes for graph
-    GLuint graphVAO;
-    glGenVertexArrays(1, &graphVAO);
-    glBindVertexArray(graphVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, graphVBO);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-}
-
-
-
-int main() {
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "OpenGL Cube with Camera", nullptr, nullptr);
-    glfwMakeContextCurrent(window);
-
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetKeyCallback(window, key_callback);
-
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }
-
-    glViewport(0, 0, WIDTH, HEIGHT);
-
-    //Generates Shader object using shaders defualt.vert and default.frag
-    Shader shaderProgram("default.vert", "default.frag");
-
-    // Enable depth testing
-    glEnable(GL_DEPTH_TEST);
-
-
-
-    // Define vertices of the cube
-    GLfloat vertices[] = {
-        // Positions
-        -0.5f, -0.5f, -0.5f,        1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f,         1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, -0.5f,          1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, -0.5f,          1.0f, 0.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f,         1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,        1.0f, 0.0f, 0.0f,
-
-        -0.5f, -0.5f, 0.5f,         1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.5f,          1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, 0.5f,           1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, 0.5f,           1.0f, 0.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f,          1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f,         1.0f, 0.0f, 0.0f,
-
-        -0.5f, 0.5f, 0.5f,          1.0f, 0.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f,         1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,        1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,        1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f,         1.0f, 0.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f,          1.0f, 0.0f, 0.0f,
-
-        0.5f, 0.5f, 0.5f,           1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, -0.5f,          1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f,         1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f,         1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.5f,          1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, 0.5f,           1.0f, 0.0f, 0.0f,
-
-        -0.5f, -0.5f, -0.5f,        1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f,         1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.5f,          1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.5f,          1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f,         1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,        1.0f, 0.0f, 0.0f,
-
-        -0.5f, 0.5f, -0.5f,         1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, -0.5f,          1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, 0.5f,           1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, 0.5f,           1.0f, 0.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f,          1.0f, 0.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f,         1.0f, 0.0f, 0.0f,
-    };
-
-    GLuint Indices[] =
-    {
-    0, 1, 2,
-    2, 3, 0,
-    };
-
-    GLuint VAO, VBO, EBO;
+    // Generate VAO and VBO
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
 
+    // Bind VAO
     glBindVertexArray(VAO);
 
+    // Bind VBO
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, curvePoints.size() * sizeof(glm::vec2), curvePoints.data(), GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Indices), Indices, GL_STATIC_DRAW);
-
-    // Position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
+    // Set attributes
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    // Color attribute
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(1);
 
+    // Unbind VBO and VAO
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-
-    // Projection matrix
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
-
-    // Game loop
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-
-        GLfloat deltaTime = glfwGetTime();
-        glfwSetTime(0.0f);
-
-        // Handle keyboard input for camera movement
-        if (keys[GLFW_KEY_W])
-            cameraPos += cameraSpeed * cameraFront;
-        if (keys[GLFW_KEY_S])
-            cameraPos -= cameraSpeed * cameraFront;
-        if (keys[GLFW_KEY_A])
-            cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-        if (keys[GLFW_KEY_D])
-            cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-
-
-        // Clear the color and depth buffers
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // Use shader program
-        shaderProgram.Activate();
-
-        // View matrix
-        glm::mat4 view;
-        view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-
-        // Pass transformation matrices to shader
-        GLint modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
-        GLint viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
-        GLint projLoc = glGetUniformLocation(shaderProgram.ID, "projection");
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-        //// Draw the cube
-        //glBindVertexArray(VAO);
-        //glDrawArrays(GL_TRIANGLES, 0, 36);
-        //glBindVertexArray(0);
-
-
-        // Swap the screen buffers
-        glfwSwapBuffers(window);
-    }
-
-    // Clean up
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    
-    glfwTerminate();
-
-    return 0;
 }
 
+void tegnePunktene() {
+    // Generate VAO and VBO
+    GLuint VAO, VBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
 
+    // Bind VAO
+    glBindVertexArray(VAO);
 
+    // Bind VBO
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, controlPoints.size() * sizeof(glm::vec2), controlPoints.data(), GL_STATIC_DRAW);
 
+    // Set attributes
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // Draw points
+    glPointSize(8.0f);
+    glDrawArrays(GL_POINTS, 0, controlPoints.size());
+
+    // Unbind VBO and VAO
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    // Delete buffers
+    glDeleteBuffers(1, &VBO);
+    glDeleteVertexArrays(1, &VAO);
+}
+
+void tegneParabel() {
+    // Generate VAO and VBO for the curve
+    GLuint VAO, VBO;
+    lageParabel(VAO, VBO);
+
+    // Bind VAO
+    glBindVertexArray(VAO);
+
+    // Set line thickness
+    glLineWidth(3.0f);
+
+    // Draw the curve
+    glDrawArrays(GL_LINE_STRIP, 0, generateCurvePoints().size());
+
+    // Unbind VAO
+    glBindVertexArray(0);
+
+    // Delete buffers
+    glDeleteBuffers(1, &VBO);
+    glDeleteVertexArrays(1, &VAO);
+}
+
+void rendreScenen() {
+    glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Draw control points
+    tegnePunktene();
+
+    // Draw the curve
+    tegneParabel();
+
+    // Swap buffers
+    glfwSwapBuffers(window);
+}
+
+void savePointsToFile(const std::vector<glm::vec2>& points, const std::string& filename) {
+    std::ofstream file(filename);
+    if (file.is_open()) {
+        for (const auto& point : points)
+        {
+            file << point.x << " " << point.y << endl;
+        }
+        file.close();
+        cout << "Points saved to " << filename << endl;
+    }
+    else
+    {
+        cout << "Unable to open file: " << filename << endl;
+    }
+}
