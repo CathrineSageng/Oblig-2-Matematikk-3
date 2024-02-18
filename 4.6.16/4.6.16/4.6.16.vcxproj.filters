@@ -1306,4 +1306,8 @@
     <None Include="default.frag" />
     <None Include="default.vert" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="punkter.txt" />
+    <Text Include="koordinater.txt" />
+  </ItemGroup>
 </Project>

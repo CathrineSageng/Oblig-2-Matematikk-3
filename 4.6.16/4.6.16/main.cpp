@@ -13,9 +13,7 @@ using namespace std;
 GLFWwindow* window;
 
 const GLuint WIDTH = 1000, HEIGHT = 1000;
-const GLfloat cameraSpeed = 0.001f;
-glm::vec3 cubePosition = glm::vec3(0.0f, 0.5f, 0.0f); // Initial position of the cube
-
+const GLfloat cameraSpeed = 0.001f; 
 
 // Camera settings
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
@@ -28,23 +26,21 @@ GLfloat lastY = HEIGHT / 2.0f;
 bool firstMouse = true;
 bool keys[1024];
 
-//vector<float> A_matrise = { 1, 1, 1, 1, 8, 4, 2, 1, 216, 36, 6, 1, 512, 64, 8, 1 };
-//vector<float> A_vektor = { 1, 8, 3, 1 };
-
-vector<glm::vec2> controlPoints = { glm::vec2(1, 1), glm::vec2(2, 8), glm::vec2(6, 3), glm::vec2(8, 1) };
+//De 4 punktene som skal interpoleres
+vector<glm::vec2> punkter = { glm::vec2(1, 1), glm::vec2(2, 8), glm::vec2(6, 3), glm::vec2(8, 1) };
+//Bakgrunnsfargen
+GLfloat mintGreenColor[] = { 152.0f / 255.0f, 255.0f / 255.0f, 152.0f / 255.0f };
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
-//void savePointsToFile(const std::vector<glm::vec2>& points, const std::string& filename);
-//glm::vec4 inversMatriseRegningVec4(const vector<float>& A, const vector<float>& b);
-//void lageParabel(GLuint& VAO, GLuint& VBO);
-//void tegnePunktene();
-//void tegneParabel();
-//void rendreScenen();
-void savePointsToFile(const std::vector<glm::vec2>& points, const std::string& filename);
-void lageParabel(GLuint& VAO, GLuint& VBO);
+
+void lagrePunkteneTilFil(const std::vector<glm::vec2>& points, const std::string& filename);
+void lagreKoordinateneTilFil(const std::vector<glm::vec2>& points, const std::string& filename);
+
+vector<glm::vec2> regneUtGrafKoordinatene();
+void lageGraf(GLuint& VAO, GLuint& VBO);
 void tegnePunktene();
-void tegneParabel();
+void tegneGraf();
 void rendreScenen();
 
 
@@ -71,9 +67,6 @@ int main() {
 
     //Generates Shader object using shaders defualt.vert and default.frag
     Shader shaderProgram("default.vert", "default.frag");
-
-    // Enable depth testing
-    glEnable(GL_DEPTH_TEST);
 
     // Projection matrix
     glm::mat4 projection = glm::perspective(glm::radians(45.0f), (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
@@ -162,190 +155,45 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
+// Tar inn vec2 punkter som input og genererer en kurve ved å bruke kubisk hermite interpolasjon mellom punktene
+vector<glm::vec2> regneUtGrafKoordinatene() 
+{   
+    //Denne vektoren er tom, men vil inneholde punktene som definerer kurven som skal genereres. 
+    vector<glm::vec2> kurvePunkter;
 
-//glm::vec4 inversMatriseRegningVec4(const vector<float>& A, const vector<float>& b)
-//{
-//    //AtA matrisen er en 4*4 matrise som tar inn verdiene til vektoren AtA. 
-//    //Verdiene i denne matrisen er regnet ut med en matrisekalkulator
-//    glm::mat4 AtA_matrix(A[0], A[1], A[2], A[3],
-//        A[4], A[5], A[6], A[7],
-//        A[8], A[9], A[10], A[11],
-//        A[12], A[13], A[14], A[15]);
-//
-//    //Oppretter en AtY vektor som er regnet ut med matrisekalkulator
-//    //Det er At verdiene ganget med y-verdi koordinatene.
-//    glm::vec4 AtY_vektor(b[0], b[1], b[2], b[3]);
-//
-//    //Regner ut den inverse verdien til matrisen AtA og ganger resultatet med vektoren AtY 
-//    glm::vec4 x = glm::inverse(AtA_matrix) * AtY_vektor;
-//
-//    //Returnerer løsningen til x
-//    return x;
-//}
-//
-//void lageParabel(GLuint& VAO, GLuint& VBO) {
-//    // Løsning av minste kvadraters metode
-//    glm::vec4 koeffisienter = inversMatriseRegningVec4(A_matrise, A_vektor);
-//
-//    // Parabelpunkter
-//    const int punkter = 100;
-//    vector<glm::vec2> points;
-//    for (int i = 0; i < punkter; ++i)
-//    {
-//        float t = (i / (float)(punkter - 1)) * 20.0f - 10.0f;
-//        float x = t;
-//        float y = koeffisienter.x * x * x * x + koeffisienter.y * x * x + koeffisienter.z * x + koeffisienter.w;
-//        points.push_back(glm::vec2(x, y));
-//
-//    }
-//
-//    // Generer VAO og VBO
-//    glGenVertexArrays(1, &VAO);
-//    glGenBuffers(1, &VBO);
-//
-//    // Binder VAO
-//    glBindVertexArray(VAO);
-//
-//    // Binder VBO
-//    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-//    glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(glm::vec2), &points[0], GL_STATIC_DRAW);
-//
-//    // Setter attributtene
-//    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-//    glEnableVertexAttribArray(0);
-//
-//    // Unbinder VBO og VAO
-//    glBindBuffer(GL_ARRAY_BUFFER, 0);
-//    glBindVertexArray(0);
-//}
-//
-//void tegnePunktene() {
-//    // Punkter
-//    vector<glm::vec2> points =
-//    {
-//        glm::vec2(1, 1), glm::vec2(2, 8), glm::vec2(6, 3), glm::vec2(8, 1)
-//    };
-//
-//    // Lagre punktene i en tekstfil
-//    savePointsToFile(points, "points.txt");
-//
-//     // Farger for punktene (gul)
-//    vector<glm::vec3> farger(points.size(), glm::vec3(1.0f, 1.0f, 0.0f));
-//
-//    // Generer VAO og VBO
-//    GLuint VAO, VBO, CBO;
-//    glGenVertexArrays(1, &VAO);
-//    glGenBuffers(1, &VBO);
-//    glGenBuffers(1, &CBO);
-//
-//    // Binder VAO
-//    glBindVertexArray(VAO);
-//
-//    // Binder VBO
-//    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-//    glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(glm::vec2), &points[0], GL_STATIC_DRAW);
-//
-//    // Setter attributtene
-//    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-//    glEnableVertexAttribArray(0);
-//
-//    // Binder CBO for farger
-//    glBindBuffer(GL_ARRAY_BUFFER, CBO);
-//    glBufferData(GL_ARRAY_BUFFER, farger.size() * sizeof(glm::vec3), &farger[0], GL_STATIC_DRAW);
-//    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-//    glEnableVertexAttribArray(1);
-//
-//    // Tegner punktene
-//    glPointSize(8.0f);
-//    glDrawArrays(GL_POINTS, 0, points.size());
-//
-//    // Unbinder VBO og VAO
-//    glBindBuffer(GL_ARRAY_BUFFER, 0);
-//    glBindVertexArray(0);
-//
-//    glDeleteBuffers(1, &VBO);
-//    glDeleteBuffers(1, &CBO);
-//    glDeleteVertexArrays(1, &VAO);
-//}
-//
-//void tegneParabel() {
-//    // Parabelpunkter
-//    GLuint VAO, VBO;
-//
-//    lageParabel(VAO, VBO);
-//
-//    // Binder VAO
-//    glBindVertexArray(VAO);
-//
-//    // Setter tykkelsen på linjen
-//    glLineWidth(3.0f);
-//
-//    // Tegner parabelen
-//    glDrawArrays(GL_LINE_STRIP, 0, 100);
-//
-//    // Unbinder VAO
-//    glBindVertexArray(0);
-//    glDeleteVertexArrays(1, &VAO);
-//    glDeleteBuffers(1, &VBO);
-//
-//    // Rydde opp
-//    glDeleteBuffers(1, &VBO);
-//    glDeleteVertexArrays(1, &VAO);
-//}
-//
-//void rendreScenen() {
-//
-//    glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-//    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-//
-//    // Tegne punkter
-//    tegnePunktene();
-//    tegneParabel();
-//    glfwSwapBuffers(window);
-//}
-//
-//void savePointsToFile(const std::vector<glm::vec2>& points, const std::string& filename) {
-//    std::ofstream file(filename);
-//    if (file.is_open()) {
-//        for (const auto& point : points)
-//        {
-//            file << point.x << " " << point.y << endl;
-//        }
-//        file.close();
-//        cout << "Points saved to " << filename << endl;
-//    }
-//    else
-//    {
-//        cout << "Unable to open file: " << filename << endl;
-//    }
-//}
-// Generate curve points using cubic Hermite interpolation
-vector<glm::vec2> generateCurvePoints() {
-    vector<glm::vec2> curvePoints;
+    //For hvert par av punkter utføres en hermite interpolasjon for å generere flere punkter langs kurven mellom 
+    //disse to punktene. Man beregner tangentvektoene i de to punktene. 
+    for (size_t i = 0; i < punkter.size() - 1; ++i) 
+    {
+        //P0 og P1 er start og sluttpunktet for kurven som skal genereres. 
+        glm::vec2 p0 = punkter[i];
+        glm::vec2 p1 = punkter[i + 1];
+        //Tangentvektorene, den deriverte som retningen på kurven i hvert punkt. 
+        glm::vec2 m0 = i == 0 ? glm::normalize(p1 - p0) : 0.5f * (p1 - punkter[i - 1]);
+        glm::vec2 m1 = i == punkter.size() - 2 ? glm::normalize(p1 - p0) : 0.5f * (punkter[i + 2] - p0);
 
-    for (size_t i = 0; i < controlPoints.size() - 1; ++i) {
-        glm::vec2 p0 = controlPoints[i];
-        glm::vec2 p1 = controlPoints[i + 1];
-        glm::vec2 m0 = i == 0 ? glm::normalize(p1 - p0) : 0.5f * (p1 - controlPoints[i - 1]);
-        glm::vec2 m1 = i == controlPoints.size() - 2 ? glm::normalize(p1 - p0) : 0.5f * (controlPoints[i + 2] - p0);
-
-        for (float t = 0.0f; t <= 1.0f; t += 0.01f) {
+        for (float t = 0.0f; t <= 1.0f; t += 0.01f) 
+        {
+            //Hermite basisfunksjoner
             float h00 = 2.0f * t * t * t - 3.0f * t * t + 1.0f;
             float h10 = t * t * t - 2.0f * t * t + t;
             float h01 = -2.0f * t * t * t + 3.0f * t * t;
             float h11 = t * t * t - t * t;
 
-            glm::vec2 point = h00 * p0 + h10 * m0 + h01 * p1 + h11 * m1;
-            curvePoints.push_back(point);
+            glm::vec2 punkt = h00 * p0 + h10 * m0 + h01 * p1 + h11 * m1;
+            kurvePunkter.push_back(punkt);
         }
     }
 
-    return curvePoints;
+    return kurvePunkter;
 }
 
-void lageParabel(GLuint& VAO, GLuint& VBO) {
+void lageGraf(GLuint& VAO, GLuint& VBO) {
     // Generate curve points
-    vector<glm::vec2> curvePoints = generateCurvePoints();
+    vector<glm::vec2> kurvePunkter = regneUtGrafKoordinatene();
+
+    // Lagre punktene i en tekstfil
+    lagreKoordinateneTilFil(kurvePunkter, "koordinater.txt");
 
     // Generate VAO and VBO
     glGenVertexArrays(1, &VAO);
@@ -356,7 +204,7 @@ void lageParabel(GLuint& VAO, GLuint& VBO) {
 
     // Bind VBO
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, curvePoints.size() * sizeof(glm::vec2), curvePoints.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, kurvePunkter.size() * sizeof(glm::vec2), kurvePunkter.data(), GL_STATIC_DRAW);
 
     // Set attributes
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
@@ -367,40 +215,60 @@ void lageParabel(GLuint& VAO, GLuint& VBO) {
     glBindVertexArray(0);
 }
 
-void tegnePunktene() {
-    // Generate VAO and VBO
-    GLuint VAO, VBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+void tegnePunktene() 
+{
+        // Farger for punktene
+        vector<glm::vec3> farger = 
+        { glm::vec3(1.0f, 0.5f, 1.0f),
+          glm::vec3(1.0f, 0.5f, 1.0f),
+          glm::vec3(1.0f, 0.5f, 1.0f),
+          glm::vec3(1.0f, 0.5f, 1.0f) 
+        };
 
-    // Bind VAO
-    glBindVertexArray(VAO);
+        // Generer VAO og VBO
+        GLuint VAO, VBO, CBO;
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &CBO);
 
-    // Bind VBO
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, controlPoints.size() * sizeof(glm::vec2), controlPoints.data(), GL_STATIC_DRAW);
+        // Binder VAO
+        glBindVertexArray(VAO);
 
-    // Set attributes
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+        // Binder VBO
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, punkter.size() * sizeof(glm::vec2), punkter.data(), GL_STATIC_DRAW);
 
-    // Draw points
-    glPointSize(8.0f);
-    glDrawArrays(GL_POINTS, 0, controlPoints.size());
+        // Setter attributtene for posisjon
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
 
-    // Unbind VBO and VAO
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+        // Binder CBO for farger
+        glBindBuffer(GL_ARRAY_BUFFER, CBO);
+        glBufferData(GL_ARRAY_BUFFER, farger.size() * sizeof(glm::vec3), farger.data(), GL_STATIC_DRAW);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        glEnableVertexAttribArray(1);
 
-    // Delete buffers
-    glDeleteBuffers(1, &VBO);
-    glDeleteVertexArrays(1, &VAO);
+        // Tegner punktene
+        glPointSize(12.0f);
+        glDrawArrays(GL_POINTS, 0, punkter.size());
+
+        // Unbinder VBO og VAO
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+
+        // Sletter bufferne
+        glDeleteBuffers(1, &VBO);
+        glDeleteBuffers(1, &CBO);
+        glDeleteVertexArrays(1, &VAO);
+
+    // Lagre punktene i en tekstfil
+    lagrePunkteneTilFil(punkter, "punkter.txt");
 }
 
-void tegneParabel() {
+void tegneGraf() {
     // Generate VAO and VBO for the curve
     GLuint VAO, VBO;
-    lageParabel(VAO, VBO);
+    lageGraf(VAO, VBO);
 
     // Bind VAO
     glBindVertexArray(VAO);
@@ -409,7 +277,7 @@ void tegneParabel() {
     glLineWidth(3.0f);
 
     // Draw the curve
-    glDrawArrays(GL_LINE_STRIP, 0, generateCurvePoints().size());
+    glDrawArrays(GL_LINE_STRIP, 0, regneUtGrafKoordinatene().size());
 
     // Unbind VAO
     glBindVertexArray(0);
@@ -420,31 +288,47 @@ void tegneParabel() {
 }
 
 void rendreScenen() {
-    glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+    glClearColor(mintGreenColor[0], mintGreenColor[1], mintGreenColor[2], 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Draw control points
+    // Tegner de 4 punktene
     tegnePunktene();
 
-    // Draw the curve
-    tegneParabel();
+    // Tegner grafen
+    tegneGraf();
 
     // Swap buffers
     glfwSwapBuffers(window);
 }
 
-void savePointsToFile(const std::vector<glm::vec2>& points, const std::string& filename) {
-    std::ofstream file(filename);
+void lagrePunkteneTilFil(const std::vector<glm::vec2>& punkter, const std::string& filnavn) {
+    std::ofstream file(filnavn);
     if (file.is_open()) {
-        for (const auto& point : points)
+        for (const auto& point : punkter)
         {
             file << point.x << " " << point.y << endl;
         }
         file.close();
-        cout << "Points saved to " << filename << endl;
+        cout << "Punktene lagret i filen:  " << filnavn << endl;
     }
     else
     {
-        cout << "Unable to open file: " << filename << endl;
+        cout << "Klarte ikke å opne tekstfilen: " << filnavn << endl;
+    }
+}
+
+void lagreKoordinateneTilFil(const std::vector<glm::vec2>& punkter, const std::string& filnavn) {
+    std::ofstream file(filnavn);
+    if (file.is_open()) {
+        for (const auto& point : punkter)
+        {
+            file << "x: " << point.x << " ,y:" << point.y << endl;
+        }
+        file.close();
+        cout << "Punktene lagret i filen: " << filnavn << endl;
+    }
+    else
+    {
+        cout << "Klarte ikke å opne tekstfilen: " << filnavn << endl;
     }
 }

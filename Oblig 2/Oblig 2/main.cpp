@@ -326,9 +326,11 @@ void tegneParabel() {
     glDeleteVertexArrays(1, &VAO);
 }
 
-void rendreScenen() {
- 
-    glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+void rendreScenen() 
+{
+    // Lyseblå bakgrunnsfarge
+    glClearColor(0.7f, 0.85f, 1.0f, 1.0f); 
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Tegne punkter
